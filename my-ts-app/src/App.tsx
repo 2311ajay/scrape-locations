@@ -1,14 +1,23 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import { Circle, CircleMarker, MapContainer, Marker, Polygon, Polyline, Popup, Rectangle, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from "leaflet";
 import IconPng from "./images/pin.png";
+import { idText } from 'typescript';
 
+interface StoreLocation {
+  store_name: String;
+  store_location: String;
+  store_geolocation: String;
+  id: number;
+  created_at: String,
+}
 
 function App() {
   const center: [number, number] = [ 2.200844, 102.240143]
+  const [storeLocations, setStoreLocations] = useState<StoreLocation[]>([])
 
   const myIcon = L.icon({
   iconUrl: IconPng,
@@ -27,6 +36,20 @@ function App() {
   const purpleOptions = { color: 'purple' }
   const redOptions = { color: 'red' }
 
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/tasks/')
+      .then((res) => {
+        return res.json();
+      })
+      .then((data) => {
+        console.log("scraped data =", data);
+        setStoreLocations(data);
+      })
+      .catch(
+        e => console.log("error =", e)
+      );
+  }, []);
+
   return (
     // @ts-ignore
     <MapContainer center={[2.200844, 102.240143]} zoom={13} scrollWheelZoom={false} ref={mapRef}>
@@ -34,8 +57,21 @@ function App() {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <Marker position={center} icon={myIcon} />
-      <Circle radius={RADIUS_OF_NETWORK} center={center} />
+      {/* <Marker position={center} icon={myIcon} />
+      <Circle radius={RADIUS_OF_NETWORK} center={center} /> */}
+      {storeLocations.map(storeLocation => {
+        let geoLoc = storeLocation.store_geolocation;
+        geoLoc = geoLoc.replace("(", "");
+        geoLoc = geoLoc.replace(")", "");
+        const latLong = geoLoc.split(",");
+        const position: [number, number] = [+latLong[0], +latLong[1]];
+        const inNetwork = true;
+        return (
+          <>
+            <Marker position={position} icon={myIcon} />
+            <Circle radius={RADIUS_OF_NETWORK} center={position} pathOptions={inNetwork? limeOptions: redOptions}/>
+          </>
+        )})}
         {/* <Polyline pathOptions={limeOptions} positions={polyline} />
         <Polyline pathOptions={limeOptions} positions={multiPolyline} />
         <Polygon pathOptions={purpleOptions} positions={polygon} />
